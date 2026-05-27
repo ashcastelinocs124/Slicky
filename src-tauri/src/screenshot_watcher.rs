@@ -18,11 +18,11 @@ use std::time::{Duration, SystemTime};
 
 use tauri::{AppHandle, Emitter, Runtime};
 
-use crate::window_ops;
+use crate::{storage, window_ops};
 
 const POLL_INTERVAL: Duration = Duration::from_millis(400);
 /// Only react to files modified within this window of "now". This stops us
-/// from emitting events for files we missed because Slickly was offline.
+/// from emitting events for files we missed because Slicky was offline.
 const RECENT_WINDOW: Duration = Duration::from_secs(10);
 /// Give the OS a moment after we first see the file in case the bytes are
 /// still being flushed to disk.
@@ -74,6 +74,10 @@ fn run<R: Runtime>(app: AppHandle<R>) {
             }
             known.insert(path.clone());
 
+            if !screenshot_trigger_enabled(&app) {
+                continue;
+            }
+
             let age = now.duration_since(mtime).unwrap_or(Duration::ZERO);
             if age > RECENT_WINDOW {
                 eprintln!(
@@ -118,6 +122,12 @@ fn run<R: Runtime>(app: AppHandle<R>) {
     }
 }
 
+fn screenshot_trigger_enabled<R: Runtime>(app: &AppHandle<R>) -> bool {
+    storage::read_settings(app)
+        .map(|s| s.capture_trigger == "screenshot")
+        .unwrap_or(true)
+}
+
 fn scan_png(dir: &Path) -> Vec<(PathBuf, SystemTime)> {
     let mut out = Vec::new();
     let rd = match std::fs::read_dir(dir) {
@@ -141,7 +151,7 @@ fn scan_png(dir: &Path) -> Vec<(PathBuf, SystemTime)> {
                          macOS is blocking access to this folder. Grant it under:\n           \
                          System Settings → Privacy & Security → Files and Folders → Desktop Folder.\n           \
                          (In `tauri dev`, enable your *terminal* app there — Terminal.app or iTerm.\n           \
-                         In a packaged build, enable Slickly.)",
+                         In a packaged build, enable Slicky.)",
                         dir.display()
                     );
                 } else {

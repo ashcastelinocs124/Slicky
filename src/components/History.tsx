@@ -9,7 +9,7 @@ import {
   type Variant,
 } from "../lib/storage";
 import { Markdown } from "./Markdown";
-import { SlicklyLogo } from "./SlicklyLogo";
+import { SlickyLogo } from "./SlickyLogo";
 
 interface Props {
   onBack: () => void;
@@ -179,7 +179,7 @@ export function History({ onBack }: Props) {
                 <path d="M15 18l-6-6 6-6" />
               </svg>
             </button>
-            <SlicklyLogo size={18} className="shrink-0 rounded-[4px]" />
+            <SlickyLogo size={18} className="shrink-0 rounded-[4px]" />
             <span className="text-[12px] font-semibold tracking-wide text-slick-text">
               Library
             </span>

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate Slickly app icon (cursor + snip motif) and UI assets."""
+"""Generate Slicky app icon (cursor + snip motif) and UI assets."""
 
 from __future__ import annotations
 

@@ -3,7 +3,7 @@ use tauri::{
     WebviewWindow,
 };
 
-/// Compact size when the user opens Slickly from the Dock (settings shell).
+/// Compact size when the user opens Slicky from the Dock (settings shell).
 pub const APP_WINDOW_WIDTH: f64 = 300.0;
 pub const APP_WINDOW_HEIGHT: f64 = 360.0;
 

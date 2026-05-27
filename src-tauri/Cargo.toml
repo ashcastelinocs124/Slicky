@@ -1,13 +1,13 @@
 [package]
-name = "slickly"
+name = "slicky"
 version = "0.1.0"
-description = "Slickly — instant AI explanations of anything on your screen"
-authors = ["Slickly"]
+description = "Slicky — instant AI explanations of anything on your screen"
+authors = ["Slicky"]
 edition = "2021"
 rust-version = "1.77"
 
 [lib]
-name = "slickly_lib"
+name = "slicky_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
@@ -23,9 +23,10 @@ base64 = "0.22"
 uuid = { version = "1", features = ["v4"] }
 chrono = { version = "0.4", features = ["serde"] }
 anyhow = "1"
+device_query = "4.0.1"
 
 # macOS-specific: used to call NSApp.activate(...) so the floating popup
-# surfaces above the user's frontmost app. Without this, Slickly's window
+# surfaces above the user's frontmost app. Without this, Slicky's window
 # stays "behind" whatever the user is working in even with always-on-top.
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"

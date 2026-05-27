@@ -29,7 +29,7 @@ pub fn build_plugin<R: Runtime>() -> tauri::plugin::TauriPlugin<R> {
 }
 
 /// Resolve the user's preferred manual shortcut and register it if non-empty.
-/// The empty string is the documented "disabled" value — Slickly's main
+/// The empty string is the documented "disabled" value — Slicky's main
 /// trigger is the screenshot-folder watcher, so a manual hotkey is optional.
 pub fn register_default(app: &AppHandle) -> Result<(), String> {
     if app.try_state::<ActiveShortcut>().is_none() {

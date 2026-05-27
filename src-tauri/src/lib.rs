@@ -2,6 +2,7 @@ mod capture;
 mod screenshot_watcher;
 mod shortcut;
 mod storage;
+mod triple_click;
 mod window_ops;
 
 use tauri::{Manager, RunEvent, window::Color};
@@ -21,6 +22,7 @@ pub fn run() {
             }
 
             screenshot_watcher::spawn(app.handle().clone());
+            triple_click::spawn(app.handle().clone());
             window_ops::configure_main_window_at_startup(&app.handle());
 
             // Background app: no window on launch. The Dock icon stays, but
@@ -49,7 +51,7 @@ pub fn run() {
             shortcut::reregister_shortcut,
         ])
         .build(tauri::generate_context!())
-        .expect("error while building Slickly")
+        .expect("error while building Slicky")
         .run(|app_handle, event| {
             if let RunEvent::Reopen {
                 has_visible_windows,

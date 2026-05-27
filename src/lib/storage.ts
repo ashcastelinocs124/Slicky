@@ -6,7 +6,7 @@ import { invoke } from "@tauri-apps/api/core";
  */
 
 export interface Variant {
-  kind: "original" | "simpler" | "example";
+  kind: "original" | "simpler" | "example" | "detail";
   text: string;
 }
 
@@ -17,7 +17,7 @@ export interface HistoryEntry {
   title: string;
   /** The currently displayed explanation text. */
   explanation: string;
-  /** Each generated variant (original/simpler/example), kept for re-display. */
+  /** Each generated variant, kept for re-display. */
   variants: Variant[];
   /** Permanent screenshot location once saved; empty before save. */
   screenshot_path: string;
@@ -28,14 +28,19 @@ export interface Settings {
   api_key: string;
   model: string;
   shortcut: string;
+  capture_trigger: "screenshot" | "triple_click";
+  /** Optional user-provided learning/background context for tailored explanations. */
+  background_context: string;
 }
 
 const DEFAULT_SETTINGS: Settings = {
   api_key: "",
   model: "gpt-5",
-  // Empty by default — Slickly's primary trigger is the screenshot folder
+  // Empty by default — Slicky's primary trigger is the screenshot folder
   // watcher, which detects macOS's own ⌘⇧4 / ⌘⇧3 / ⌘⇧5 captures.
   shortcut: "",
+  capture_trigger: "screenshot",
+  background_context: "",
 };
 
 export async function loadHistory(): Promise<HistoryEntry[]> {

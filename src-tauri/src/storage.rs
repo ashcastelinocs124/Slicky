@@ -3,7 +3,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, Runtime};
 
 const HISTORY_FILE: &str = "history.json";
 const SETTINGS_FILE: &str = "settings.json";
@@ -40,6 +40,10 @@ pub struct Settings {
     pub model: String,
     #[serde(default = "default_shortcut")]
     pub shortcut: String,
+    #[serde(default = "default_capture_trigger")]
+    pub capture_trigger: String,
+    #[serde(default)]
+    pub background_context: String,
 }
 
 fn default_model() -> String {
@@ -54,7 +58,11 @@ fn default_shortcut() -> String {
     String::new()
 }
 
-fn data_dir(app: &AppHandle) -> Result<PathBuf, String> {
+pub fn default_capture_trigger() -> String {
+    "screenshot".into()
+}
+
+fn data_dir<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, String> {
     let dir = app
         .path()
         .app_data_dir()
@@ -63,7 +71,7 @@ fn data_dir(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(dir)
 }
 
-pub fn ensure_storage_dirs(app: &AppHandle) -> Result<(), String> {
+pub fn ensure_storage_dirs<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
     let dir = data_dir(app)?;
     fs::create_dir_all(dir.join(SCREENSHOTS_DIR)).map_err(|e| format!("create screenshots dir: {e}"))?;
     Ok(())
@@ -96,7 +104,7 @@ fn write_atomic(target: &Path, contents: &[u8]) -> Result<(), String> {
     Ok(())
 }
 
-fn read_history_file(app: &AppHandle) -> Result<Vec<HistoryEntry>, String> {
+fn read_history_file<R: Runtime>(app: &AppHandle<R>) -> Result<Vec<HistoryEntry>, String> {
     let path = data_dir(app)?.join(HISTORY_FILE);
     if !path.exists() {
         return Ok(Vec::new());
@@ -109,7 +117,7 @@ fn read_history_file(app: &AppHandle) -> Result<Vec<HistoryEntry>, String> {
         .map_err(|e| format!("parse history: {e}"))
 }
 
-fn write_history_file(app: &AppHandle, entries: &[HistoryEntry]) -> Result<(), String> {
+fn write_history_file<R: Runtime>(app: &AppHandle<R>, entries: &[HistoryEntry]) -> Result<(), String> {
     let path = data_dir(app)?.join(HISTORY_FILE);
     let json = serde_json::to_vec_pretty(entries).map_err(|e| format!("encode history: {e}"))?;
     write_atomic(&path, &json)
@@ -194,11 +202,16 @@ pub fn clear_history(app: AppHandle) -> Result<(), String> {
 
 #[tauri::command]
 pub fn load_settings(app: AppHandle) -> Result<Settings, String> {
-    let path = data_dir(&app)?.join(SETTINGS_FILE);
+    read_settings(&app)
+}
+
+pub fn read_settings<R: Runtime>(app: &AppHandle<R>) -> Result<Settings, String> {
+    let path = data_dir(app)?.join(SETTINGS_FILE);
     if !path.exists() {
         return Ok(Settings {
             model: default_model(),
             shortcut: default_shortcut(),
+            capture_trigger: default_capture_trigger(),
             ..Default::default()
         });
     }
@@ -209,6 +222,9 @@ pub fn load_settings(app: AppHandle) -> Result<Settings, String> {
     }
     if s.shortcut.is_empty() {
         s.shortcut = default_shortcut();
+    }
+    if s.capture_trigger.is_empty() {
+        s.capture_trigger = default_capture_trigger();
     }
     Ok(s)
 }

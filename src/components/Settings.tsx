@@ -6,7 +6,7 @@ import {
   saveSettings,
   type Settings as SettingsT,
 } from "../lib/storage";
-import { SlicklyLogo } from "./SlicklyLogo";
+import { SlickyLogo } from "./SlickyLogo";
 
 interface Props {
   onBack: () => void;
@@ -50,7 +50,9 @@ export function Settings({ onBack }: Props) {
         // Empty is a valid value: it disables the manual hotkey entirely
         // and leaves the screenshot watcher as the only trigger.
         shortcut: settings.shortcut.trim(),
+        capture_trigger: settings.capture_trigger,
         model: (settings.model || "gpt-5").trim(),
+        background_context: settings.background_context.trim(),
       });
       setSettings(saved);
       try {
@@ -115,7 +117,7 @@ export function Settings({ onBack }: Props) {
                 <path d="M15 18l-6-6 6-6" />
               </svg>
             </button>
-            <SlicklyLogo size={18} className="shrink-0 rounded-[4px]" />
+            <SlickyLogo size={18} className="shrink-0 rounded-[4px]" />
             <span className="text-[12px] font-semibold tracking-wide text-slick-text">
               Settings
             </span>
@@ -179,21 +181,50 @@ export function Settings({ onBack }: Props) {
           </Field>
 
           <Field
-            label="Trigger"
+            label="Background context"
+            help="Optional. Tell Slicky what you already know, what class you're in, your role, or what kind of explanation helps you."
+          >
+            <textarea
+              value={settings.background_context}
+              onChange={(e) => update("background_context", e.target.value)}
+              placeholder="Example: I'm a CS124 student learning Java. Explain screenshots like I'm new to programming."
+              rows={4}
+              spellCheck
+              className="w-full resize-none rounded-md border border-white/10 bg-black/30 px-2 py-1.5 text-[12px] leading-relaxed text-slick-text placeholder:text-slick-subtle focus:border-white/35 focus:outline-none"
+            />
+          </Field>
+
+          <Field
+            label="Capture trigger"
             help={
-              <>
-                Slickly watches your macOS screenshot folder. Press <kbd>⌘</kbd>{" "}
-                <kbd>⇧</kbd> <kbd>4</kbd> (or <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>3</kbd> /{" "}
-                <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>5</kbd>) anywhere on your Mac and the
-                popup will appear with an explanation of whatever you snipped.
-              </>
+              settings.capture_trigger === "triple_click" ? (
+                <>
+                  Hold <kbd>⌥</kbd> and click the image twice. Slicky captures a region around
+                  your cursor and explains it. macOS may require Accessibility permission for your
+                  terminal during development.
+                </>
+              ) : (
+                <>
+                  Press <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>4</kbd> (or <kbd>⌘</kbd>{" "}
+                  <kbd>⇧</kbd> <kbd>3</kbd> / <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>5</kbd>)
+                  anywhere on your Mac and Slicky explains the screenshot.
+                </>
+              )
             }
           >
-            <div className="rounded-md border border-white/10 bg-black/20 px-2 py-1.5 text-[12px] text-slick-subtle">
-              <span className="text-slick-text">
-                <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>4</kbd>
-              </span>{" "}
-              · auto-detected from macOS screenshots
+            <div className="grid grid-cols-2 gap-1.5">
+              <TriggerOption
+                active={settings.capture_trigger === "screenshot"}
+                title="Screenshot shortcut"
+                detail="⌘⇧4 watcher"
+                onClick={() => update("capture_trigger", "screenshot")}
+              />
+              <TriggerOption
+                active={settings.capture_trigger === "triple_click"}
+                title="Double-click image"
+                detail="⌥ + 2 clicks"
+                onClick={() => update("capture_trigger", "triple_click")}
+              />
             </div>
           </Field>
 
@@ -201,7 +232,7 @@ export function Settings({ onBack }: Props) {
             label="Manual hotkey (optional)"
             help={
               <>
-                If you'd rather use Slickly's own interactive selector, set an
+                If you'd rather use Slicky's own interactive selector, set an
                 accelerator like <code className="font-mono">CommandOrControl+Shift+E</code>.
                 Leave blank to rely solely on macOS's native screenshot keys.
               </>
@@ -269,5 +300,32 @@ function Field({
       {children}
       {help && <p className="mt-1 text-[11px] leading-relaxed text-slick-subtle">{help}</p>}
     </div>
+  );
+}
+
+function TriggerOption({
+  active,
+  title,
+  detail,
+  onClick,
+}: {
+  active: boolean;
+  title: string;
+  detail: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-md border px-2 py-1.5 text-left transition ${
+        active
+          ? "border-white/35 bg-white/15 text-white"
+          : "border-white/10 bg-black/20 text-slick-subtle hover:bg-white/10 hover:text-white"
+      }`}
+    >
+      <div className="text-[11.5px] font-semibold">{title}</div>
+      <div className="mt-0.5 text-[10.5px] opacity-80">{detail}</div>
+    </button>
   );
 }

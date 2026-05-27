@@ -1,13 +1,13 @@
 /**
  * Thin wrapper around the OpenAI Chat Completions API focused on vision
- * prompts for Slickly. Kept dependency-free so this file is portable.
+ * prompts for Slicky. Kept dependency-free so this file is portable.
  *
  * SECURITY: the API key lives in the user's local `settings.json` and is
  * read on demand. We never log it. Requests use `fetch` directly and are
  * permitted through Tauri's CSP allowlist for api.openai.com.
  */
 
-export type ExplainMode = "explain" | "simpler" | "example";
+export type ExplainMode = "explain" | "simpler" | "example" | "detail";
 
 export interface ExplainParams {
   apiKey: string;
@@ -17,6 +17,8 @@ export interface ExplainParams {
   mode: ExplainMode;
   /** Optional prior explanation for "simpler"/"example" follow-ups. */
   previousExplanation?: string;
+  /** Optional user background used to tailor the explanation. */
+  backgroundContext?: string;
   signal?: AbortSignal;
 }
 
@@ -28,13 +30,16 @@ export interface ExplainResult {
 
 const PROMPTS: Record<ExplainMode, string> = {
   explain:
-    "You are Slickly, a concise tutor. The user just snipped a region of their screen. " +
+    "You are Slicky, a concise tutor. The user just snipped a region of their screen. " +
     "Identify the single most important concept, term, formula, code construct, or UI element shown, " +
-    "and explain it clearly in 3-6 short sentences. " +
+    "and explain the concept briefly, aiming for 50 words or fewer when that is enough. " +
+    "If the screenshot is a chart, graph, table, or other data visualization, first explain what the chart is about, " +
+    "then add the important visible data points, comparisons, minimums/maximums, or trend. " +
+    "If a number is not legible, say it is unclear rather than guessing. " +
     "Start your answer with a bold one-line title (Markdown **like this**) naming the concept, " +
     "then a blank line, then the explanation. " +
     "Do not describe the screenshot ('I see a screenshot of...'); just explain the concept. " +
-    "Plain prose, no lists unless the concept is genuinely list-shaped.",
+    "Plain prose, no lists unless the concept or data is genuinely list-shaped.",
   simpler:
     "You previously gave an explanation for the snipped image. Re-explain the same concept " +
     "in even simpler language — imagine a smart 12-year-old has never seen it. " +
@@ -45,6 +50,12 @@ const PROMPTS: Record<ExplainMode, string> = {
     "memorable example that uses or illustrates the concept. Keep the same bold one-line title on " +
     "the first line (you may append ' — Example'), then a blank line, then the example. " +
     "If code is appropriate, use a fenced code block. Otherwise 2-4 sentences.",
+  detail:
+    "You previously gave a short explanation for the snipped image. Now explain the same concept in detail. " +
+    "Keep the same bold one-line title on the first line (you may append ' — In Detail'), then a blank line. " +
+    "First explain the concept, key parts, why they matter, how they relate, and any important caveats. " +
+    "If the image also contains a chart, graph, table, or data visualization, then walk through the visible data points, axes, labels, units, comparisons, and trend. " +
+    "Use clear Markdown with short paragraphs or bullets when helpful.",
 };
 
 function deriveTitle(text: string): string {
@@ -70,7 +81,7 @@ export class OpenAIError extends Error {
  * full reply arrives in a second or two.
  */
 export async function explainImage(params: ExplainParams): Promise<ExplainResult> {
-  const { apiKey, model, imageB64, mode, previousExplanation, signal } = params;
+  const { apiKey, model, imageB64, mode, previousExplanation, backgroundContext, signal } = params;
   if (!apiKey) {
     throw new OpenAIError("Missing OpenAI API key. Open Settings to add one.", 0);
   }
@@ -78,6 +89,16 @@ export async function explainImage(params: ExplainParams): Promise<ExplainResult
   const userContent: Array<Record<string, unknown>> = [
     { type: "text", text: PROMPTS[mode] },
   ];
+
+  const trimmedBackground = backgroundContext?.trim();
+  if (trimmedBackground) {
+    userContent.push({
+      type: "text",
+      text:
+        "User background/context for tailoring the explanation. Use this only to choose the right level, examples, and assumptions; do not mention it unless directly useful:\n" +
+        `"""\n${trimmedBackground}\n"""`,
+    });
+  }
 
   if (mode !== "explain" && previousExplanation) {
     userContent.push({
@@ -90,9 +111,9 @@ export async function explainImage(params: ExplainParams): Promise<ExplainResult
     type: "image_url",
     image_url: {
       url: `data:image/png;base64,${imageB64}`,
-      // Slickly always sends small region screenshots, so low detail is enough
-      // and roughly halves token cost vs "auto".
-      detail: "low",
+      // Charts, tables, and code often hide meaning in small numeric labels.
+      // High detail costs more tokens, but avoids losing those data points.
+      detail: "high",
     },
   });
 
@@ -116,7 +137,7 @@ export async function explainImage(params: ExplainParams): Promise<ExplainResult
       {
         role: "system",
         content:
-          "You are Slickly, a hyper-concise on-screen explainer. Always answer in clean Markdown.",
+          "You are Slicky, a hyper-concise on-screen explainer. Always answer in clean Markdown.",
       },
       { role: "user", content: userContent },
     ],

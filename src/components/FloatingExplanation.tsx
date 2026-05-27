@@ -18,7 +18,7 @@ import {
   type Settings,
 } from "../lib/storage";
 import { Markdown } from "./Markdown";
-import { SlicklyLogo } from "./SlicklyLogo";
+import { SlickyLogo } from "./SlickyLogo";
 
 type Status =
   | { kind: "idle" }
@@ -81,7 +81,7 @@ export function FloatingExplanation({
    * Show the popup anchored to the user's current cursor position. We use
    * this instead of `showWindow` after a capture so the explanation appears
    * right next to where the user was just working — no need to switch back
-   * to Slickly's "home" position on a different monitor.
+   * to Slicky's "home" position on a different monitor.
    */
   const showPopupNearCursor = useCallback(async () => {
     try {
@@ -102,7 +102,7 @@ export function FloatingExplanation({
       await showPopupNearCursor();
       setStatus({
         kind: "error",
-        message: "Add your OpenAI API key in Settings to use Slickly.",
+        message: "Add your OpenAI API key in Settings to use Slicky.",
       });
       onOpenSettings();
       return null;
@@ -119,7 +119,7 @@ export function FloatingExplanation({
       setCapture(cap);
       setThumbDataUrl(`data:image/png;base64,${cap.b64}`);
       // Anchor the popup to the user's current cursor — this is what makes
-      // Slickly "appear where you snipped" instead of forcing the user to
+      // Slicky "appear where you snipped" instead of forcing the user to
       // ⌘-Tab back to a window parked somewhere else.
       await showPopupNearCursor();
       setStatus({ kind: "explaining", mode: "explain" });
@@ -134,6 +134,7 @@ export function FloatingExplanation({
           model: s.model,
           imageB64: cap.b64,
           mode: "explain",
+          backgroundContext: s.background_context,
           signal: ac.signal,
         });
         const next = newEntrySkeleton(result.title, result.text, s.model);
@@ -155,7 +156,7 @@ export function FloatingExplanation({
   );
 
   /**
-   * Manual capture flow — uses Slickly's own interactive region selector.
+   * Manual capture flow — uses Slicky's own interactive region selector.
    * Reachable via the header "camera" button and the optional manual hotkey.
    */
   const startCapture = useCallback(async () => {
@@ -274,6 +275,7 @@ export function FloatingExplanation({
           model: settings.model,
           imageB64: capture.b64,
           mode,
+          backgroundContext: settings.background_context,
           previousExplanation:
             entry.variants.find((v) => v.kind === "original")?.text ?? entry.explanation,
           signal: ac.signal,
@@ -319,7 +321,7 @@ export function FloatingExplanation({
     setStatus({ kind: "idle" });
   }, []);
 
-  // Keyboard-first: cmd-enter retry, cmd-s save, esc close, cmd-1/2 variants.
+  // Keyboard-first: cmd-enter retry, cmd-s save, esc close, cmd-1/2/3 variants.
   useEffect(() => {
     const onKey = (ev: KeyboardEvent) => {
       const mod = ev.metaKey || ev.ctrlKey;
@@ -341,6 +343,9 @@ export function FloatingExplanation({
       } else if (ev.key === "2" && entry) {
         ev.preventDefault();
         void requestVariant("example");
+      } else if (ev.key === "3" && entry) {
+        ev.preventDefault();
+        void requestVariant("detail");
       }
     };
     window.addEventListener("keydown", onKey);
@@ -355,6 +360,8 @@ export function FloatingExplanation({
         ? "Simplifying…"
         : status.mode === "example"
           ? "Finding an example…"
+          : status.mode === "detail"
+            ? "Explaining in detail…"
           : "Explaining…";
     return null;
   }, [status]);
@@ -407,6 +414,7 @@ export function FloatingExplanation({
           currentMode={status.kind === "ready" ? status.mode : null}
           onSimpler={() => requestVariant("simpler")}
           onExample={() => requestVariant("example")}
+          onDetail={() => requestVariant("detail")}
           onSave={handleSave}
           onClose={handleClose}
         />
@@ -434,9 +442,9 @@ function Header({
       className="read-bar mx-1.5 mt-1.5 flex items-center justify-between rounded-lg px-2.5 py-1.5"
     >
       <div className="flex items-center gap-2">
-        <SlicklyLogo size={18} className="shrink-0" />
+        <SlickyLogo size={18} className="shrink-0" />
         <span className="text-[11px] font-semibold tracking-wide text-white">
-          Slickly
+          Slicky
         </span>
         <span className="text-[10px] text-muted">
           <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>4</kbd>
@@ -536,10 +544,10 @@ function IconButton({
 function EmptyState({ onCapture }: { onCapture: () => void }) {
   return (
     <div className="legible flex h-full min-h-[120px] flex-col items-center justify-center gap-2 px-3 text-center">
-      <SlicklyLogo size={32} />
+      <SlickyLogo size={32} />
       <div className="text-[12px] font-medium text-white">Snip anything to learn it.</div>
       <div className="max-w-[220px] text-[11px] leading-relaxed text-muted">
-        Take any screenshot with <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>4</kbd> — Slickly picks it up
+        Take any screenshot with <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>4</kbd> — Slicky picks it up
         the moment it lands on your Desktop and explains what's inside.
       </div>
       <button
@@ -610,6 +618,7 @@ function Footer({
   currentMode,
   onSimpler,
   onExample,
+  onDetail,
   onSave,
   onClose,
 }: {
@@ -619,6 +628,7 @@ function Footer({
   currentMode: ExplainMode | null;
   onSimpler: () => void;
   onExample: () => void;
+  onDetail: () => void;
   onSave: () => void;
   onClose: () => void;
 }) {
@@ -640,6 +650,14 @@ function Footer({
           shortcut="⌘2"
         >
           Give example
+        </FooterButton>
+        <FooterButton
+          onClick={onDetail}
+          disabled={!hasEntry || busy}
+          active={currentMode === "detail"}
+          shortcut="⌘3"
+        >
+          Explain in detail
         </FooterButton>
         <FooterButton
           onClick={onSave}

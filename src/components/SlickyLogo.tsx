@@ -1,5 +1,5 @@
 /** Inline logo — always renders (no /public fetch needed in Tauri). */
-export function SlicklyLogo({
+export function SlickyLogo({
   size = 20,
   className = "",
 }: {
