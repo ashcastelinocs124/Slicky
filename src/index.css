@@ -1,0 +1,110 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  background: transparent !important;
+  color: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, system-ui,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  user-select: none;
+}
+
+.selectable,
+.selectable * {
+  user-select: text;
+  cursor: text;
+}
+
+/* App window shell — fully invisible (no box/outline around the application). */
+.surface {
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* Dark scrim behind text so words stay readable on any wallpaper. */
+.read-panel {
+  flex: 1;
+  min-height: 0;
+  margin: 0 6px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.78);
+}
+
+.read-bar {
+  background: rgba(0, 0, 0, 0.72);
+}
+
+.surface .legible,
+.surface .legible *,
+.surface h1,
+.surface h2,
+.surface h3,
+.surface p,
+.surface article,
+.surface li,
+.surface label,
+.surface strong,
+.surface em,
+.surface .prose-slickly {
+  color: #ffffff;
+}
+
+.surface .legible,
+.surface h1,
+.surface h2,
+.surface h3,
+.surface p,
+.surface article {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 1), 0 2px 12px rgba(0, 0, 0, 0.85);
+}
+
+.text-muted {
+  color: #d4d4d4;
+}
+
+.thin-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.thin-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+}
+.thin-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+.thin-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+kbd {
+  font-family: "SF Mono", ui-monospace, Menlo, monospace;
+  font-size: 10px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #e5e5e5;
+}
+
+[data-tauri-drag-region] {
+  -webkit-app-region: drag;
+}
+[data-tauri-drag-region] * {
+  -webkit-app-region: no-drag;
+}
