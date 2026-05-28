@@ -32,7 +32,7 @@ const PROMPTS: Record<ExplainMode, string> = {
   explain:
     "You are Slicky, a concise tutor. The user just snipped a region of their screen. " +
     "Identify the single most important concept, term, formula, code construct, or UI element shown, " +
-    "and explain the concept briefly, aiming for 50 words or fewer when that is enough. " +
+    "and explain the concept clearly and concisely. " +
     "If the screenshot is a chart, graph, table, or other data visualization, first explain what the chart is about, " +
     "then add the important visible data points, comparisons, minimums/maximums, or trend. " +
     "If a number is not legible, say it is unclear rather than guessing. " +
@@ -64,6 +64,20 @@ function deriveTitle(text: string): string {
   const firstLine = trimmed.split("\n")[0]!.trim();
   const stripped = firstLine.replace(/^\*+|\*+$/g, "").replace(/^#+\s*/, "");
   return (stripped || trimmed).slice(0, 90);
+}
+
+function stripLeadingTitle(text: string): string {
+  const trimmed = text.trim();
+  const lines = trimmed.split("\n");
+  const first = lines[0]?.trim() ?? "";
+  const looksLikeTitle = /^#{1,3}\s+\S/.test(first) || /^\*\*[^*]+\*\*$/.test(first);
+  if (!looksLikeTitle) return trimmed;
+
+  const rest = lines.slice(1);
+  while (rest[0]?.trim() === "") {
+    rest.shift();
+  }
+  return rest.join("\n").trim() || trimmed;
 }
 
 export class OpenAIError extends Error {
@@ -180,5 +194,5 @@ export async function explainImage(params: ExplainParams): Promise<ExplainResult
   if (!text.trim()) {
     throw new OpenAIError("OpenAI returned an empty response.", 200);
   }
-  return { text: text.trim(), title: deriveTitle(text) };
+  return { text: stripLeadingTitle(text), title: deriveTitle(text) };
 }

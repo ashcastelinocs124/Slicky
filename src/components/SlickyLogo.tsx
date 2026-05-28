@@ -17,27 +17,11 @@ export function SlickyLogo({
       aria-hidden
     >
       <rect width="64" height="64" rx="14" fill="#0a0a0a" />
-      <rect
-        x="14"
-        y="18"
-        width="30"
-        height="24"
-        rx="2"
-        stroke="#fff"
-        strokeOpacity="0.9"
-        strokeWidth="2"
-        strokeDasharray="5 4"
-        fill="none"
-      />
-      <circle cx="14" cy="18" r="2.5" fill="#fff" />
-      <circle cx="44" cy="18" r="2.5" fill="#fff" />
-      <circle cx="44" cy="42" r="2.5" fill="#fff" />
-      <circle cx="14" cy="42" r="2.5" fill="#fff" />
       <path
-        d="M26 24 L26 44 L31 39 L35 50 L39 48 L35 37 L43 37 L26 24 Z"
+        d="M21 13 L21 51 L30 42 L37 58 L44 55 L37 39 L50 39 L21 13 Z"
         fill="#fff"
         stroke="#0a0a0a"
-        strokeWidth="1.2"
+        strokeWidth="1.5"
         strokeLinejoin="round"
       />
     </svg>

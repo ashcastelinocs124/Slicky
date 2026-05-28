@@ -95,23 +95,14 @@ def draw_snip_rect(draw: ImageDraw.ImageDraw, box: tuple, scale: float) -> None:
 
 
 def render_icon(size: int) -> Image.Image:
-    """Transparent icon — no filled square outline; macOS applies the squircle."""
+    """Black app icon with a white cursor/snip mark."""
     icon = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    bg = Image.new("RGBA", (size, size), BG_DARK + (255,))
+    icon.alpha_composite(bg)
     draw = ImageDraw.Draw(icon)
     s = size / 1024.0
 
-    margin = 0.2 * size
-    box = (
-        margin + 48 * s,
-        margin + 72 * s,
-        size - margin - 48 * s,
-        size - margin - 56 * s,
-    )
-    draw_snip_rect(draw, box, s * 2.4)
-
-    cx = box[0] + (box[2] - box[0]) * 0.38
-    cy = box[1] + (box[3] - box[1]) * 0.42
-    draw_cursor(draw, cx, cy, s * 5.4)
+    draw_cursor(draw, 350 * s, 250 * s, 18 * s)
 
     return icon
 
