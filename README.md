@@ -16,6 +16,7 @@ Built with **Tauri 2 + React + TypeScript + Tailwind**.
 - **Floating, always-on-top, translucent chat popup** with the screenshot thumbnail above the explanation.
 - **Buttons**: *Explain simpler* (`⌘1`), *Give example* (`⌘2`), *Save to library* (`⌘S`), *Close* (`Esc`).
 - **Local library** stored as plain JSON in your app data folder, with snippet thumbnails.
+- **Obsidian auto-save** via the Obsidian Local REST API plugin. When enabled, each new screenshot explanation is appended to today's daily note.
 - **Optional manual hotkey** for when you'd rather use Slicky's own region selector (off by default).
 - Fully **keyboard-first** — every action has a shortcut, including `↑/↓` in the library and `/` to search.
 
@@ -40,6 +41,14 @@ A floating window will appear. Open *Settings*, paste your OpenAI API key, save.
 
 > Slicky resolves your screenshot folder via `defaults read com.apple.screencapture location` (falling back to `~/Desktop`). Anything that drops a fresh `.png` there will be picked up.
 > In **Double-click image** mode, hold `⌥` and click twice near an image/chart. Slicky captures a fixed region around the cursor. During `tauri dev`, macOS may ask for Accessibility permission for your terminal app.
+
+### Optional Obsidian sync
+
+1. Install and enable [Obsidian Local REST API](https://github.com/coddingtonbear/obsidian-local-rest-api).
+2. In Obsidian, open *Settings → Local REST API* and copy your API key.
+3. In Slicky Settings, enable **Auto-save new explanations to Obsidian**, paste the API key, and keep the default URL unless you changed the plugin port.
+
+Slicky writes through `https://127.0.0.1:27124` and appends Markdown notes to today's daily note under a `Slicky` heading. The Obsidian API key is stored locally in Slicky's settings file.
 
 ## Production build
 
@@ -67,6 +76,7 @@ src/
 src-tauri/src/
   lib.rs                        Tauri builder, command registration
   capture.rs                    spawns `/usr/sbin/screencapture -i` (manual mode)
+  obsidian.rs                   appends explanations to Obsidian daily notes
   screenshot_watcher.rs         polls the macOS screenshot folder for new PNGs
   triple_click.rs               polls for ⌥ + double-click and captures near cursor
   shortcut.rs                   optional manual hotkey via global-shortcut plugin
@@ -79,7 +89,8 @@ src-tauri/src/
 1. On launch, Rust spawns a polling watcher on the user's macOS screenshot directory.
 2. When ⌘⇧4 / ⌘⇧3 / ⌘⇧5 writes a fresh `.png` into that directory, the watcher emits `slickly://new-screenshot` with the file path.
 3. The frontend reads the bytes via `read_screenshot_b64`, then POSTs the base64 image to `https://api.openai.com/v1/chat/completions` with a tutor-style system prompt.
-4. The result is rendered into the floating popup. **Save to library** copies the screenshot into the persistent app data dir and appends an entry to `history.json`.
+4. The result is rendered into the floating popup. If Obsidian sync is enabled, Slicky appends the explanation to today's daily note.
+5. **Save to library** copies the screenshot into the persistent app data dir and appends an entry to `history.json`.
 
 The optional manual hotkey (Settings → "Manual hotkey") still works the old way: it calls `capture_screenshot`, which spawns `/usr/sbin/screencapture -i -x -t png <tmpfile>` for Slicky's own interactive region selector.
 

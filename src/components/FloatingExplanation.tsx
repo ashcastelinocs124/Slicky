@@ -14,6 +14,7 @@ import {
   loadSettings,
   newEntrySkeleton,
   saveHistoryEntry,
+  syncExplanationToObsidian,
   type HistoryEntry,
   type Settings,
 } from "../lib/storage";
@@ -139,6 +140,9 @@ export function FloatingExplanation({
         });
         const next = newEntrySkeleton(result.title, result.text, s.model);
         setEntry(next);
+        void syncExplanationToObsidian(next).catch((err) => {
+          console.warn("[slicky] Obsidian sync failed:", err);
+        });
         setStatus({ kind: "ready", mode: "explain" });
       } catch (e) {
         if ((e as Error).name === "AbortError") {

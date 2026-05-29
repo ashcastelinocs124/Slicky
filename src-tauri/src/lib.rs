@@ -1,4 +1,5 @@
 mod capture;
+mod obsidian;
 mod screenshot_watcher;
 mod shortcut;
 mod storage;
@@ -44,6 +45,7 @@ pub fn run() {
             storage::clear_history,
             storage::load_settings,
             storage::save_settings,
+            obsidian::sync_explanation_to_obsidian,
             window_ops::show_main_window,
             window_ops::show_popup_near_cursor,
             window_ops::hide_main_window,

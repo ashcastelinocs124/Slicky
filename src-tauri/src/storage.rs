@@ -43,6 +43,12 @@ pub struct Settings {
     #[serde(default = "default_capture_trigger")]
     pub capture_trigger: String,
     #[serde(default)]
+    pub obsidian_sync_enabled: bool,
+    #[serde(default = "default_obsidian_base_url")]
+    pub obsidian_base_url: String,
+    #[serde(default)]
+    pub obsidian_api_key: String,
+    #[serde(default)]
     pub background_context: String,
 }
 
@@ -60,6 +66,10 @@ fn default_shortcut() -> String {
 
 pub fn default_capture_trigger() -> String {
     "screenshot".into()
+}
+
+fn default_obsidian_base_url() -> String {
+    "https://127.0.0.1:27124".into()
 }
 
 fn data_dir<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, String> {
@@ -212,6 +222,7 @@ pub fn read_settings<R: Runtime>(app: &AppHandle<R>) -> Result<Settings, String>
             model: default_model(),
             shortcut: default_shortcut(),
             capture_trigger: default_capture_trigger(),
+            obsidian_base_url: default_obsidian_base_url(),
             ..Default::default()
         });
     }
@@ -225,6 +236,9 @@ pub fn read_settings<R: Runtime>(app: &AppHandle<R>) -> Result<Settings, String>
     }
     if s.capture_trigger.is_empty() {
         s.capture_trigger = default_capture_trigger();
+    }
+    if s.obsidian_base_url.is_empty() {
+        s.obsidian_base_url = default_obsidian_base_url();
     }
     Ok(s)
 }

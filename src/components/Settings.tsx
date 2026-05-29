@@ -52,6 +52,9 @@ export function Settings({ onBack }: Props) {
         shortcut: settings.shortcut.trim(),
         capture_trigger: settings.capture_trigger,
         model: (settings.model || "gpt-5").trim(),
+        obsidian_sync_enabled: settings.obsidian_sync_enabled,
+        obsidian_base_url: (settings.obsidian_base_url || "https://127.0.0.1:27124").trim(),
+        obsidian_api_key: settings.obsidian_api_key.trim(),
         background_context: settings.background_context.trim(),
       });
       setSettings(saved);
@@ -192,6 +195,41 @@ export function Settings({ onBack }: Props) {
               spellCheck
               className="w-full resize-none rounded-md border border-white/10 bg-black/30 px-2 py-1.5 text-[12px] leading-relaxed text-slick-text placeholder:text-slick-subtle focus:border-white/35 focus:outline-none"
             />
+          </Field>
+
+          <Field
+            label="Obsidian auto-save"
+            help="Requires the Obsidian Local REST API plugin. Slicky appends each new explanation to today's daily note under a Slicky section."
+          >
+            <label className="mb-2 flex items-center gap-2 rounded-md border border-white/10 bg-black/20 px-2 py-1.5 text-[12px] text-slick-text">
+              <input
+                type="checkbox"
+                checked={settings.obsidian_sync_enabled}
+                onChange={(e) => update("obsidian_sync_enabled", e.target.checked)}
+                className="accent-white"
+              />
+              Auto-save new explanations to Obsidian
+            </label>
+            <div className="grid gap-2">
+              <input
+                type="text"
+                value={settings.obsidian_base_url}
+                onChange={(e) => update("obsidian_base_url", e.target.value)}
+                placeholder="https://127.0.0.1:27124"
+                spellCheck={false}
+                autoComplete="off"
+                className="w-full rounded-md border border-white/10 bg-black/30 px-2 py-1.5 font-mono text-[12px] text-slick-text placeholder:text-slick-subtle focus:border-white/35 focus:outline-none"
+              />
+              <input
+                type={showKey ? "text" : "password"}
+                value={settings.obsidian_api_key}
+                onChange={(e) => update("obsidian_api_key", e.target.value)}
+                placeholder="Obsidian Local REST API key"
+                spellCheck={false}
+                autoComplete="off"
+                className="w-full rounded-md border border-white/10 bg-black/30 px-2 py-1.5 font-mono text-[12px] text-slick-text placeholder:text-slick-subtle focus:border-white/35 focus:outline-none"
+              />
+            </div>
           </Field>
 
           <Field

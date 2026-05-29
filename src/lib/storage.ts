@@ -29,6 +29,9 @@ export interface Settings {
   model: string;
   shortcut: string;
   capture_trigger: "screenshot" | "triple_click";
+  obsidian_sync_enabled: boolean;
+  obsidian_base_url: string;
+  obsidian_api_key: string;
   /** Optional user-provided learning/background context for tailored explanations. */
   background_context: string;
 }
@@ -40,6 +43,9 @@ const DEFAULT_SETTINGS: Settings = {
   // watcher, which detects macOS's own ⌘⇧4 / ⌘⇧3 / ⌘⇧5 captures.
   shortcut: "",
   capture_trigger: "screenshot",
+  obsidian_sync_enabled: false,
+  obsidian_base_url: "https://127.0.0.1:27124",
+  obsidian_api_key: "",
   background_context: "",
 };
 
@@ -84,6 +90,10 @@ export async function saveSettings(settings: Settings): Promise<Settings> {
 
 export async function reregisterShortcut(accelerator: string): Promise<void> {
   await invoke("reregister_shortcut", { accelerator });
+}
+
+export async function syncExplanationToObsidian(entry: HistoryEntry): Promise<void> {
+  await invoke("sync_explanation_to_obsidian", { entry });
 }
 
 /**

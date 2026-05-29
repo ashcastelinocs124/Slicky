@@ -24,6 +24,7 @@ uuid = { version = "1", features = ["v4"] }
 chrono = { version = "0.4", features = ["serde"] }
 anyhow = "1"
 device_query = "4.0.1"
+reqwest = { version = "0.13.3", default-features = false, features = ["blocking", "rustls"] }
 
 # macOS-specific: used to call NSApp.activate(...) so the floating popup
 # surfaces above the user's frontmost app. Without this, Slicky's window
