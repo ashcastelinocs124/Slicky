@@ -22,6 +22,8 @@ export interface HistoryEntry {
   /** Permanent screenshot location once saved; empty before save. */
   screenshot_path: string;
   model: string;
+  /** Mermaid source of the "Draw it" diagram, if one was generated. */
+  mermaid?: string;
 }
 
 export interface Settings {

@@ -90,6 +90,37 @@ export class OpenAIError extends Error {
 }
 
 /**
+ * Build a Chat Completions request body, handling OpenAI's per-family quirks
+ * in one place so every caller stays consistent:
+ *   - o-series reasoning models (o1/o3/o4-mini, ...) and the GPT-5 family
+ *     accept `max_completion_tokens` but reject `max_tokens`, and reject any
+ *     `temperature` other than the default (1).
+ *   - Older chat models (gpt-4o, gpt-4.1) accept a custom temperature.
+ * We always emit `max_completion_tokens`, attach `temperature` only when the
+ * model supports a custom value, and ask GPT-5 for minimal reasoning effort to
+ * stay snappy in the interactive popup.
+ */
+export function buildChatBody(params: {
+  model: string;
+  messages: unknown[];
+  maxTokens?: number;
+}): Record<string, unknown> {
+  const { model, messages, maxTokens } = params;
+  const isReasoning = /^o\d/i.test(model);
+  const isGpt5 = /^gpt-5/i.test(model);
+  const supportsTemperature = !isReasoning && !isGpt5;
+
+  const body: Record<string, unknown> = {
+    model,
+    max_completion_tokens: maxTokens ?? (isGpt5 || isReasoning ? 1200 : 800),
+    messages,
+  };
+  if (supportsTemperature) body.temperature = 0.4;
+  if (isGpt5) body.reasoning_effort = "minimal";
+  return body;
+}
+
+/**
  * Call the Chat Completions endpoint with the image attached. We use
  * non-streaming for the MVP because the floating window is small and the
  * full reply arrives in a second or two.
@@ -131,22 +162,8 @@ export async function explainImage(params: ExplainParams): Promise<ExplainResult
     },
   });
 
-  // OpenAI parameter quirks (as of 2026):
-  //   - o-series reasoning models (o1/o3/o4-mini, ...) and the GPT-5 family
-  //     accept `max_completion_tokens` but reject `max_tokens`. They also
-  //     reject any `temperature` other than the default (1) — sending 0.4
-  //     gets you a 400 "Unsupported value" error.
-  //   - Older chat models (gpt-4o, gpt-4.1) accept both, but `max_tokens` is
-  //     considered legacy.
-  // We always emit `max_completion_tokens` and only attach `temperature`
-  // when the model is known to support a custom value.
-  const isReasoning = /^o\d/i.test(model);
-  const isGpt5 = /^gpt-5/i.test(model);
-  const supportsTemperature = !isReasoning && !isGpt5;
-
-  const body: Record<string, unknown> = {
+  const body = buildChatBody({
     model,
-    max_completion_tokens: isGpt5 || isReasoning ? 1200 : 800,
     messages: [
       {
         role: "system",
@@ -155,15 +172,7 @@ export async function explainImage(params: ExplainParams): Promise<ExplainResult
       },
       { role: "user", content: userContent },
     ],
-  };
-  if (supportsTemperature) {
-    body.temperature = 0.4;
-  }
-  // Keep GPT-5 snappy for an interactive popup. Users who want deeper
-  // analysis can pick a non-mini o-series model from Settings.
-  if (isGpt5) {
-    body.reasoning_effort = "minimal";
-  }
+  });
 
   const resp = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",

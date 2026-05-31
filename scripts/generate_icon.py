@@ -6,7 +6,7 @@ from __future__ import annotations
 import math
 from pathlib import Path
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 
 ROOT = Path(__file__).resolve().parents[1]
 ICONS_DIR = ROOT / "src-tauri" / "icons"
@@ -95,14 +95,42 @@ def draw_snip_rect(draw: ImageDraw.ImageDraw, box: tuple, scale: float) -> None:
 
 
 def render_icon(size: int) -> Image.Image:
-    """Black app icon with a white cursor/snip mark."""
-    icon = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    bg = Image.new("RGBA", (size, size), BG_DARK + (255,))
-    icon.alpha_composite(bg)
-    draw = ImageDraw.Draw(icon)
-    s = size / 1024.0
+    """Black app icon (white cursor mark) on a macOS-proportioned rounded square.
 
-    draw_cursor(draw, 350 * s, 250 * s, 18 * s)
+    Follows Apple's icon grid: the rounded body is inset ~10% on each side
+    (≈824px in a 1024 canvas) with transparent margins and a soft drop shadow,
+    so the icon sits at the same size as other Dock apps instead of full-bleed.
+    """
+    s = size / 1024.0
+    icon = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+
+    margin = int(100 * s)
+    body = size - 2 * margin
+    radius = int(body * 0.2237)  # macOS continuous-corner squircle ≈ 22.37%
+
+    # Soft drop shadow beneath the body, like other macOS icons.
+    shadow = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    sdraw = ImageDraw.Draw(shadow)
+    drop = int(14 * s)
+    sdraw.rounded_rectangle(
+        (margin, margin + drop, margin + body, margin + body + drop),
+        radius=radius,
+        fill=(0, 0, 0, 90),
+    )
+    icon.alpha_composite(shadow.filter(ImageFilter.GaussianBlur(max(1, int(20 * s)))))
+
+    # Rounded body filled with the subtle black → charcoal gradient.
+    body_img = gradient_bg(body)
+    mask = rounded_mask(body, radius_ratio=radius / body)
+    icon.paste(body_img, (margin, margin), mask)
+
+    # White cursor mark, centered within the body.
+    draw = ImageDraw.Draw(icon)
+    cs = body * 0.0185
+    cw, ch = 18 * cs, 28 * cs
+    ox = margin + (body - cw) / 2
+    oy = margin + (body - ch) / 2
+    draw_cursor(draw, ox, oy, cs)
 
     return icon
 

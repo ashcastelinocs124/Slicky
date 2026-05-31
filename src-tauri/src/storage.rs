@@ -24,6 +24,11 @@ pub struct HistoryEntry {
     pub screenshot_path: String,
     #[serde(default)]
     pub model: String,
+    /// Mermaid source of the "Draw it" diagram, if one was generated. Optional
+    /// so pre-existing history.json entries (written before this feature)
+    /// still deserialize, and absent so they stay clean on re-save.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mermaid: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { listen, emit, type UnlistenFn } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 
 import {
@@ -10,6 +10,7 @@ import {
   type CaptureResult,
 } from "../lib/capture";
 import { explainImage, OpenAIError, type ExplainMode } from "../lib/openai";
+import { buildDiagramMermaid } from "../lib/diagram";
 import {
   loadSettings,
   newEntrySkeleton,
@@ -57,6 +58,12 @@ export function FloatingExplanation({
   const abortRef = useRef<AbortController | null>(null);
   /** Avoid stale React state blocking back-to-back watcher events. */
   const pipelineBusyRef = useRef(false);
+  /**
+   * Latest generated diagram, re-sent when the diagram window announces it has
+   * mounted its listener. This closes the first-open race: the window may not
+   * be listening yet when we first emit the scene.
+   */
+  const lastSceneRef = useRef<{ mermaid: string; title: string } | null>(null);
 
   // Load settings on mount.
   useEffect(() => {
@@ -304,6 +311,75 @@ export function FloatingExplanation({
     [capture, entry, settings]
   );
 
+  /**
+   * "Draw it" — generate a bottom-up first-principles diagram for the current
+   * explanation and show it in the separate diagram window. We open the window
+   * first so its Excalidraw canvas is mounted and listening by the time the
+   * (1–3s) model call returns the Mermaid.
+   */
+  const handleDraw = useCallback(async () => {
+    if (!capture || !entry || !settings?.api_key) return;
+    // Cancel any in-flight request (explain or a previous draw). A new capture
+    // also aborts this controller, so a stale draw can't clobber a newer entry.
+    const targetId = entry.id;
+    const targetTitle = entry.title;
+    abortRef.current?.abort();
+    const ac = new AbortController();
+    abortRef.current = ac;
+    try {
+      await invoke("show_diagram_window");
+      const mermaid = await buildDiagramMermaid({
+        apiKey: settings.api_key,
+        model: settings.model,
+        imageB64: capture.b64,
+        explanation: entry.explanation,
+        signal: ac.signal,
+      });
+      // Only stamp the diagram onto the entry if we're still on that same entry.
+      setEntry((prev) =>
+        prev && prev.id === targetId ? { ...prev, mermaid } : prev
+      );
+      lastSceneRef.current = { mermaid, title: targetTitle };
+      await emit("slickly://diagram-scene", { mermaid, title: targetTitle });
+    } catch (e) {
+      if ((e as Error).name === "AbortError") return;
+      const message =
+        e instanceof OpenAIError ? e.message : (e as Error).message ?? "Unknown error";
+      // Surface the failure in the diagram window (where the user is looking)
+      // so its Regenerate button doesn't hang on "Regenerating…".
+      void emit("slickly://diagram-error", message);
+      setStatus({ kind: "error", message });
+    }
+  }, [capture, entry, settings]);
+
+  // The diagram window asks for a fresh diagram via its Regenerate button.
+  useEffect(() => {
+    let unlisten: UnlistenFn | undefined;
+    listen("slickly://diagram-regenerate", () => {
+      void handleDraw();
+    }).then((fn) => {
+      unlisten = fn;
+    });
+    return () => {
+      unlisten?.();
+    };
+  }, [handleDraw]);
+
+  // The diagram window announces when its listener is mounted. Re-send the
+  // latest scene so a fast first generation that beat the window isn't lost.
+  useEffect(() => {
+    let unlisten: UnlistenFn | undefined;
+    listen("slickly://diagram-ready", () => {
+      const scene = lastSceneRef.current;
+      if (scene) void emit("slickly://diagram-scene", scene);
+    }).then((fn) => {
+      unlisten = fn;
+    });
+    return () => {
+      unlisten?.();
+    };
+  }, []);
+
   const handleSave = useCallback(async () => {
     if (!entry) return;
     try {
@@ -350,11 +426,14 @@ export function FloatingExplanation({
       } else if (ev.key === "3" && entry) {
         ev.preventDefault();
         void requestVariant("detail");
+      } else if (ev.key === "4" && entry) {
+        ev.preventDefault();
+        void handleDraw();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [startCapture, handleSave, handleClose, requestVariant, entry]);
+  }, [startCapture, handleSave, handleClose, requestVariant, handleDraw, entry]);
 
   const busy = status.kind === "capturing" || status.kind === "explaining";
   const hint = useMemo(() => {
@@ -374,6 +453,7 @@ export function FloatingExplanation({
     <div className="flex h-screen w-screen flex-col bg-transparent">
       <div className="surface flex h-full w-full flex-col overflow-hidden animate-fade-in">
         <Header
+          captureTrigger={settings?.capture_trigger ?? "screenshot"}
           onCapture={startCapture}
           onOpenHistory={onOpenHistory}
           onOpenSettings={onOpenSettings}
@@ -382,7 +462,12 @@ export function FloatingExplanation({
         />
 
         <div className="read-panel legible overflow-y-auto thin-scroll px-3 py-2.5 text-[13px] leading-relaxed text-white">
-          {status.kind === "idle" && !entry && <EmptyState onCapture={startCapture} />}
+          {status.kind === "idle" && !entry && (
+            <EmptyState
+              captureTrigger={settings?.capture_trigger ?? "screenshot"}
+              onCapture={startCapture}
+            />
+          )}
 
           {hint && <LoadingBlock label={hint} />}
 
@@ -419,6 +504,7 @@ export function FloatingExplanation({
           onSimpler={() => requestVariant("simpler")}
           onExample={() => requestVariant("example")}
           onDetail={() => requestVariant("detail")}
+          onDraw={handleDraw}
           onSave={handleSave}
           onClose={handleClose}
         />
@@ -428,12 +514,14 @@ export function FloatingExplanation({
 }
 
 function Header({
+  captureTrigger,
   onCapture,
   onOpenHistory,
   onOpenSettings,
   onClose,
   busy,
 }: {
+  captureTrigger: Settings["capture_trigger"];
   onCapture: () => void;
   onOpenHistory: () => void;
   onOpenSettings: () => void;
@@ -450,9 +538,7 @@ function Header({
         <span className="text-[11px] font-semibold tracking-wide text-white">
           Slicky
         </span>
-        <span className="text-[10px] text-muted">
-          <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>4</kbd>
-        </span>
+        <CaptureTriggerHint trigger={captureTrigger} />
       </div>
       <div className="flex items-center gap-1">
         <IconButton title="Capture again (⌘↩)" onClick={onCapture} disabled={busy}>
@@ -545,14 +631,43 @@ function IconButton({
   );
 }
 
-function EmptyState({ onCapture }: { onCapture: () => void }) {
+function CaptureTriggerHint({
+  trigger,
+}: {
+  trigger: Settings["capture_trigger"];
+}) {
+  if (trigger === "triple_click") {
+    return (
+      <span className="text-[10px] text-muted">
+        <kbd>⌥</kbd> double-click
+      </span>
+    );
+  }
+  return (
+    <span className="text-[10px] text-muted">
+      <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>4</kbd>
+    </span>
+  );
+}
+
+function EmptyState({
+  captureTrigger,
+  onCapture,
+}: {
+  captureTrigger: Settings["capture_trigger"];
+  onCapture: () => void;
+}) {
+  const screenshotHelp =
+    "Press Command+Shift+4 (not Control) — Slicky explains the PNG when it lands on your Desktop.";
+  const doubleClickHelp =
+    "Hold Option and double-click near an image or chart. Slicky captures a region around your cursor.";
+
   return (
     <div className="legible flex h-full min-h-[120px] flex-col items-center justify-center gap-2 px-3 text-center">
       <SlickyLogo size={32} />
       <div className="text-[12px] font-medium text-white">Snip anything to learn it.</div>
       <div className="max-w-[220px] text-[11px] leading-relaxed text-muted">
-        Take any screenshot with <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>4</kbd> — Slicky picks it up
-        the moment it lands on your Desktop and explains what's inside.
+        {captureTrigger === "triple_click" ? doubleClickHelp : screenshotHelp}
       </div>
       <button
         type="button"
@@ -623,6 +738,7 @@ function Footer({
   onSimpler,
   onExample,
   onDetail,
+  onDraw,
   onSave,
   onClose,
 }: {
@@ -633,6 +749,7 @@ function Footer({
   onSimpler: () => void;
   onExample: () => void;
   onDetail: () => void;
+  onDraw: () => void;
   onSave: () => void;
   onClose: () => void;
 }) {
@@ -662,6 +779,13 @@ function Footer({
           shortcut="⌘3"
         >
           Explain in detail
+        </FooterButton>
+        <FooterButton
+          onClick={onDraw}
+          disabled={!hasEntry || busy}
+          shortcut="⌘4"
+        >
+          Draw it
         </FooterButton>
         <FooterButton
           onClick={onSave}

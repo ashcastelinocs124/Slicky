@@ -48,6 +48,7 @@ pub fn run() {
             obsidian::sync_explanation_to_obsidian,
             window_ops::show_main_window,
             window_ops::show_popup_near_cursor,
+            window_ops::show_diagram_window,
             window_ops::hide_main_window,
             window_ops::resize_main_window,
             shortcut::reregister_shortcut,

@@ -227,3 +227,34 @@ pub fn present_popup_near_cursor<R: Runtime>(app: &AppHandle<R>) -> Result<(), S
 pub fn show_popup_near_cursor(app: AppHandle) -> Result<(), String> {
     present_popup_near_cursor(&app)
 }
+
+/// Larger window that hosts the Excalidraw diagram canvas. Created lazily on
+/// the first "Draw it" and reused thereafter. Unlike the chromeless popup,
+/// this is a normal decorated, resizable window the user can move around.
+pub const DIAGRAM_WINDOW_WIDTH: f64 = 720.0;
+pub const DIAGRAM_WINDOW_HEIGHT: f64 = 560.0;
+
+#[tauri::command]
+pub fn show_diagram_window(app: AppHandle) -> Result<(), String> {
+    let win = match app.get_webview_window("diagram") {
+        Some(w) => w,
+        None => tauri::WebviewWindowBuilder::new(
+            &app,
+            "diagram",
+            tauri::WebviewUrl::default(),
+        )
+        .title("Slicky — Diagram")
+        .inner_size(DIAGRAM_WINDOW_WIDTH, DIAGRAM_WINDOW_HEIGHT)
+        .min_inner_size(420.0, 320.0)
+        .resizable(true)
+        .decorations(true)
+        .always_on_top(true)
+        .visible(false)
+        .build()
+        .map_err(|e| e.to_string())?,
+    };
+    activate_app(&app);
+    win.show().map_err(|e| e.to_string())?;
+    win.set_focus().map_err(|e| e.to_string())?;
+    Ok(())
+}

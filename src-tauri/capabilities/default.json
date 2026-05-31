@@ -1,8 +1,8 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Capabilities available to the main Slicky window.",
-  "windows": ["main"],
+  "description": "Capabilities available to the Slicky main and diagram windows.",
+  "windows": ["main", "diagram"],
   "permissions": [
     "core:default",
     "core:window:allow-show",
